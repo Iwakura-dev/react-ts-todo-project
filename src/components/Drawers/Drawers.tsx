@@ -1,6 +1,8 @@
 import { useRef } from "react";
 import { useTodos } from "../../store/store";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useFormik } from "formik";
+import { Formik } from "formik";
+import * as Yup from "yup";
 import {
   Drawer,
   DrawerBody,
@@ -11,24 +13,52 @@ import {
   DrawerCloseButton,
   FormControl,
   FormLabel,
-  FormErrorMessage,
-  FormHelperText,
   VStack,
   Input,
   Button,
   useDisclosure,
+  FormErrorMessage,
 } from "@chakra-ui/react";
+
+interface IInitialValues {
+  todoText: string;
+  descriptionText: string;
+}
+interface IFormikValues {
+  initialValues: IInitialValues;
+  validationSchema?: object;
+  onSubmit: (values: IFormikValues, actions: IFormikValues) => void;
+}
 
 export const Drawers = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const drawerRef = useRef<HTMLButtonElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const descriptionRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | string>("");
+  const descriptionRef = useRef<HTMLInputElement | string>("");
   const addTodo = useTodos((state) => state.addTodo);
   const handleAddTodo = () => {
     onClose();
     addTodo(inputRef.current.value, descriptionRef.current.value);
   };
+  // Validation with formik package
+  const formik = useFormik<IFormikValues>({
+    initialValues: {
+      todoText: "",
+      descriptionText: "",
+    },
+    validationSchema: Yup.object({
+      todoText: Yup.string()
+        .required("Todo is required")
+        .min(6, "Todo text not be short"),
+      descriptionText: Yup.string()
+        .required("Description is required")
+        .min(6, "Description text not be short"),
+    }),
+    onSubmit: (values, actions) => {
+      console.log(values);
+      actions.resetForm();
+    },
+  });
   return (
     <>
       <Button
@@ -50,24 +80,39 @@ export const Drawers = () => {
           <DrawerCloseButton />
           <DrawerHeader>Add Your Todo</DrawerHeader>
           <DrawerBody>
-            <FormControl>
-              <VStack>
+            <VStack onSubmit={formik.handleSubmit}>
+              <FormControl
+                isInvalid={formik.errors.todoText && formik.touched.todoText}
+              >
+                <FormLabel>Todo Text:</FormLabel>
                 <Input
                   placeholder="Input Your Todo..."
                   type="text"
-                  name="todo"
                   ref={inputRef}
                   onKeyDown={(e) => e.key === "Enter" && handleAddTodo()}
+                  {...formik.getFieldProps("todoText")}
                 />
+                <FormErrorMessage>{formik.errors.todoText}</FormErrorMessage>
+              </FormControl>
+              <FormControl
+                isInvalid={
+                  formik.errors.descriptionText &&
+                  formik.touched.descriptionText
+                }
+              >
+                <FormLabel>Description Text:</FormLabel>
                 <Input
                   placeholder="Input Your Description for your Todo..."
                   type="text"
-                  name="description"
                   ref={descriptionRef}
                   onKeyDown={(e) => e.key === "Enter" && handleAddTodo()}
+                  {...formik.getFieldProps("descriptionText")}
                 />
-              </VStack>
-            </FormControl>
+                <FormErrorMessage>
+                  {formik.errors.descriptionText}
+                </FormErrorMessage>
+              </FormControl>
+            </VStack>
           </DrawerBody>
           <DrawerFooter>
             <Button variant={"outline"} mr={3} onClick={onClose}>
